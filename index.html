@@ -1,0 +1,210 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2D RPG Game</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+
+    canvas {
+      display: block;
+      background: #87ceeb;
+    }
+
+    #ui {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      font-size: 18px;
+    }
+
+    #health-bar {
+      width: 200px;
+      height: 20px;
+      background: red;
+      position: absolute;
+      top: 10px;
+      left: 10px;
+    }
+
+    #health-bar-inner {
+      height: 100%;
+      background: limegreen;
+      width: 100%;
+    }
+
+    #save-button {
+      position: absolute;
+      top: 50px;
+      left: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    #save-button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <div id="health-bar">
+      <div id="health-bar-inner"></div>
+    </div>
+    <button id="save-button" onclick="saveGame()">Save Game</button>
+  </div>
+  <canvas id="gameCanvas"></canvas>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const player = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      size: 50,
+      color: "blue",
+      health: 100,
+      maxHealth: 100,
+      speed: 5,
+      invincible: false,
+      invincibilityDuration: 1000, // Duration of invincibility after damage (in milliseconds)
+      lastDamageTime: 0
+    };
+
+    const monster = {
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      size: 50,
+      color: "red",
+      health: 50
+    };
+
+    const keys = {
+      ArrowUp: false,
+      ArrowDown: false,
+      ArrowLeft: false,
+      ArrowRight: false,
+      Space: false
+    };
+
+    function updateHealthBar() {
+      const healthBarInner = document.getElementById("health-bar-inner");
+      healthBarInner.style.width = (player.health / player.maxHealth) * 100 + "%";
+    }
+
+    function saveGame() {
+      const gameState = {
+        player,
+        monster
+      };
+      localStorage.setItem("gameState", JSON.stringify(gameState));
+      alert("Game saved!");
+    }
+
+    function loadGame() {
+      const savedState = JSON.parse(localStorage.getItem("gameState"));
+      if (savedState) {
+        Object.assign(player, savedState.player);
+        Object.assign(monster, savedState.monster);
+        updateHealthBar();
+      }
+    }
+
+    function drawPlayer() {
+      ctx.fillStyle = player.color;
+      ctx.fillRect(player.x, player.y, player.size, player.size);
+    }
+
+    function drawMonster() {
+      ctx.fillStyle = monster.color;
+      ctx.fillRect(monster.x, monster.y, monster.size, monster.size);
+    }
+
+    function detectCollision() {
+      const dx = player.x - monster.x;
+      const dy = player.y - monster.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance < player.size / 2 + monster.size / 2 && !player.invincible) {
+        // Player takes damage
+        player.health -= 5;
+        updateHealthBar();
+
+        // Set the player to be invincible for a short time to prevent rapid damage
+        player.invincible = true;
+        player.lastDamageTime = Date.now();
+
+        if (player.health <= 0) {
+          player.health = 0;
+        }
+      }
+    }
+
+    function moveMonster() {
+      const dx = player.x - monster.x;
+      const dy = player.y - monster.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance > monster.size / 2) {
+        monster.x += (dx / distance) * 2; // Move towards player
+        monster.y += (dy / distance) * 2; // Move towards player
+      }
+    }
+
+    function movePlayer() {
+      if (keys.ArrowUp && player.y > 0) player.y -= player.speed;
+      if (keys.ArrowDown && player.y < canvas.height - player.size) player.y += player.speed;
+      if (keys.ArrowLeft && player.x > 0) player.x -= player.speed;
+      if (keys.ArrowRight && player.x < canvas.width - player.size) player.x += player.speed;
+    }
+
+    function killMonster() {
+      if (keys.Space) {
+        monster.x = Math.random() * canvas.width;
+        monster.y = Math.random() * canvas.height;
+        monster.health = 50;
+        alert("Monster killed!");
+      }
+    }
+
+    function checkInvincibility() {
+      if (player.invincible && Date.now() - player.lastDamageTime > player.invincibilityDuration) {
+        player.invincible = false; // End invincibility
+      }
+    }
+
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      movePlayer();
+      moveMonster();
+      drawPlayer();
+      drawMonster();
+      detectCollision();
+      killMonster();
+      checkInvincibility(); // Check if player is still invincible
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener("keydown", (e) => (keys[e.key] = true));
+    window.addEventListener("keyup", (e) => (keys[e.key] = false));
+
+    loadGame();
+    gameLoop();
+  </script>
+</body>
+</html>
+
